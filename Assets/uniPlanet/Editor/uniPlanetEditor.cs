@@ -218,7 +218,6 @@ public class uniPlanetEditor : EditorWindow {
 		var absPrefabDir = Path.Combine(absOutputDir, "prefab");
 		var relPrefabDir = ToRelativePath(absPrefabDir);
 		var worldObj = new GameObject($"world{count}");
-		worldObj.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
 		var map = TableToMap(worldData);
 		var mapSize = worldData.worldSize.x * worldData.worldSize.y * worldData.worldSize.z;
 
@@ -303,11 +302,12 @@ public class uniPlanetEditor : EditorWindow {
 					}
 				}
 			}
-		}
+        }
+        worldObj.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
 
-		//EditorUtility.ClearProgressBar();
-		//PrefabUtility.SaveAsPrefabAssetAndConnect(worldObj, Path.Combine(relPrefabDir, "world.prefab"), InteractionMode.AutomatedAction);
-	}
+        //EditorUtility.ClearProgressBar();
+        //PrefabUtility.SaveAsPrefabAssetAndConnect(worldObj, Path.Combine(relPrefabDir, "world.prefab"), InteractionMode.AutomatedAction);
+    }
 
 	private static string[,,] TableToMap(uniPlanet.World worldData) {
 		var map = new string[worldData.worldSize.x, worldData.worldSize.y, worldData.worldSize.z];
@@ -321,7 +321,7 @@ public class uniPlanetEditor : EditorWindow {
 		}
 
 		foreach (var cell in worldData.cell) {
-			map[cell.x, cell.y, cell.z] = cell.block;
+            map[cell.x, cell.y, cell.z] = cell.block;
 		}
 
 		return map;
