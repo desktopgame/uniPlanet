@@ -49,7 +49,7 @@ namespace uniPlanet {
         public int x;
         public int y;
         public int z;
-        public string texture;
+        public string block;
     }
 
     [System.Serializable]
@@ -63,7 +63,7 @@ namespace uniPlanet {
     [System.Serializable]
     public class World
     {
-        public Cell[] blocks;
+        public Cell[] cell;
         public WorldSize worldSize;
     }
 }
