@@ -7,13 +7,13 @@ using System.IO;
 public class uniPlanetEditor : EditorWindow {
 	private string blocksJson = "blocks.json";
 	private string texturesJson = "textures.json";
-	private string dataJson = "data.jspn";
+	private string worldJson = "data.jspn";
 	private string log;
 	private Vector2 logScroll;
 
 	private static readonly string KEY_BLOCKSJSON = "uniPlanet.blocks";
 	private static readonly string KEY_TEXTURESJSON = "uniPlanet.textures";
-	private static readonly string KEY_DATAJSON = "uniPlanet.data";
+	private static readonly string KEY_WORLDJSON = "uniPlanet.data";
 
 	[MenuItem("Assets/uniPlanet/Open")]
 	static void Open() {
@@ -26,7 +26,7 @@ public class uniPlanetEditor : EditorWindow {
 	private void Init() {
 		this.blocksJson = PlayerPrefs.GetString(KEY_BLOCKSJSON);
 		this.texturesJson = PlayerPrefs.GetString(KEY_TEXTURESJSON);
-		this.dataJson = PlayerPrefs.GetString(KEY_DATAJSON);
+		this.worldJson = PlayerPrefs.GetString(KEY_WORLDJSON);
 		this.log = "";
 	}
 
@@ -40,9 +40,64 @@ public class uniPlanetEditor : EditorWindow {
 		EditorGUILayout.BeginVertical();
 		ChooseFolder("Block", KEY_BLOCKSJSON, ref this.blocksJson);
 		ChooseFolder("Texture", KEY_TEXTURESJSON, ref this.texturesJson);
-		ChooseFolder("Data", KEY_DATAJSON, ref this.dataJson);
+		ChooseFolder("Data", KEY_WORLDJSON, ref this.worldJson);
+
+		if (GUILayout.Button("Generate")) {
+			Generate();
+		}
+
 		ShowLog();
 		EditorGUILayout.EndVertical();
+	}
+
+	private void Generate() {
+		var blocksData = (uniPlanet.Blocks)JsonUtility.FromJson(File.ReadAllText(blocksJson), typeof(uniPlanet.Blocks));
+		var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(texturesJson), typeof(uniPlanet.Textures));
+		var worldData = (uniPlanet.World)JsonUtility.FromJson(File.ReadAllText(worldJson), typeof(uniPlanet.World));
+
+		var texturesDir = Path.Combine(Path.GetDirectoryName(texturesJson), texturesData.baseDirectory);
+		var textures = Directory.GetFiles(texturesDir);
+        // create directory for assets
+		(string absOutputDir, string relOutputDir, int _) = GenUniqueDirectory("planetData");
+		var absSpriteDir = Path.Combine(absOutputDir, "sprite");
+        var relSpriteDir = ToRelativePath(absSpriteDir);
+		Directory.CreateDirectory(absSpriteDir);
+        AssetDatabase.ImportAsset(relSpriteDir);
+        // copy textures
+        foreach(var texture in textures)
+        {
+            var absSprite = Path.Combine(absSpriteDir, Path.GetFileName(texture));
+            var relSprite = ToRelativePath(absSprite);
+            File.Copy(texture, absSprite);
+            AssetDatabase.ImportAsset(relSprite);
+        }
+	}
+
+	private static (string, string, int) GenUniqueDirectory(string name) {
+		(string absOutputDir, int count) = GetUniqueDirectory(name);
+		var relOutputDir = ToRelativePath(absOutputDir);
+		Debug.Log($"outputDir = {absOutputDir}");
+		Debug.Log($"relOutputDir = {relOutputDir}");
+		Directory.CreateDirectory(absOutputDir);
+		AssetDatabase.ImportAsset(relOutputDir);
+		return (absOutputDir, relOutputDir, count);
+	}
+
+	private static (string, int) GetUniqueDirectory(string name) {
+		var app = Application.dataPath;
+		var uniData = Path.Combine(app, $"{name}");
+		var count = 1;
+
+		while (Directory.Exists(uniData)) {
+			uniData = Path.Combine(app, $"{name}{count}");
+			count++;
+		}
+
+		return (uniData, count);
+	}
+
+	private static string ToRelativePath(string absPath) {
+		return "Assets/" + absPath.Substring(Application.dataPath.Length);
 	}
 
 	private void ChooseFolder(string label, string key, ref string dir) {
@@ -77,8 +132,8 @@ public class uniPlanetEditor : EditorWindow {
 			log += $"{texturesJson} is missing.{nl}";
 		}
 
-		if (!File.Exists(this.dataJson)) {
-			log += $"{dataJson} is missing.{nl}";
+		if (!File.Exists(this.worldJson)) {
+			log += $"{worldJson} is missing.{nl}";
 		}
 
 		EditorGUILayout.TextArea(log);
