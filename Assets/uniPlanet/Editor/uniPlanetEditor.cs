@@ -245,13 +245,12 @@ public class uniPlanetEditor : EditorWindow {
                     var blockZN = visibleZN ? map[x, y, z - 1] : null;
                     var basePos = new Vector3(x * 5, y * 5, z * 5);
                     // x+, x-
-                    if(blockXP == null) {
+                    if (blockXP == null) {
                         var right = string.IsNullOrEmpty(mappingRule.right) ? mappingRule.all : mappingRule.right;
                         var path = Path.Combine(relPrefabDir, $"pref_{map[x,y,z]}{right}.prefab");
                         var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
                         UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
-                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
-                        instance.transform.position = basePos + (Vector3.right * 5);
+                        var instance = GameObject.Instantiate(prefab, basePos + (Vector3.right * 5), Quaternion.Euler(90, 90, 0),worldObj.transform) as GameObject;
                     }
                     if (blockXN == null)
                     {
@@ -259,8 +258,7 @@ public class uniPlanetEditor : EditorWindow {
                         var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{left}.prefab");
                         var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
                         UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
-                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
-                        instance.transform.position = basePos + (Vector3.left * 5);
+                        var instance = GameObject.Instantiate(prefab, basePos + (Vector3.left * 5), Quaternion.Euler(90, 0, 90),worldObj.transform) as GameObject;
                     }
                     // y+, y-
                     if (blockYP == null)
@@ -269,8 +267,7 @@ public class uniPlanetEditor : EditorWindow {
                         var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{top}.prefab");
                         var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
                         UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
-                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
-                        instance.transform.position = basePos + (Vector3.up * 5);
+                        var instance = GameObject.Instantiate(prefab, basePos + (Vector3.up * 5), Quaternion.Euler(0, 0, 0), worldObj.transform) as GameObject;
                     }
                     if (blockYN == null)
                     {
@@ -278,8 +275,7 @@ public class uniPlanetEditor : EditorWindow {
                         var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{bottom}.prefab");
                         var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
                         UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
-                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
-                        instance.transform.position = basePos + (Vector3.down * 5);
+                        var instance = GameObject.Instantiate(prefab, basePos + (Vector3.down * 5), Quaternion.Euler(0, 0, 180), worldObj.transform) as GameObject;
                     }
                     // z+, z-
                     if (blockZP == null)
@@ -288,8 +284,8 @@ public class uniPlanetEditor : EditorWindow {
                         var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{front}.prefab");
                         var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
                         UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
-                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
-                        instance.transform.position = basePos + (Vector3.forward * 5);
+                        var instance = GameObject.Instantiate(prefab, basePos + (Vector3.forward * 5), Quaternion.Euler(90, 0, 0),worldObj.transform) as GameObject;
+
                     }
                     if (blockZN == null)
                     {
@@ -297,8 +293,7 @@ public class uniPlanetEditor : EditorWindow {
                         var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{back}.prefab");
                         var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
                         UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
-                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
-                        instance.transform.position = basePos + (Vector3.back * 5);
+                        var instance = GameObject.Instantiate(prefab, basePos + (Vector3.back * 5), Quaternion.Euler(90, 180, 0),worldObj.transform) as GameObject;
                     }
                 }
             }
