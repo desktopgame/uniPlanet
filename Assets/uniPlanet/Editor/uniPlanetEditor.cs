@@ -63,14 +63,26 @@ public class uniPlanetEditor : EditorWindow {
         var relSpriteDir = ToRelativePath(absSpriteDir);
 		Directory.CreateDirectory(absSpriteDir);
         AssetDatabase.ImportAsset(relSpriteDir);
+        var absMaterialDir = Path.Combine(absOutputDir, "material");
+        var relMaterialDir = ToRelativePath(absMaterialDir);
+        Directory.CreateDirectory(absMaterialDir);
+        AssetDatabase.ImportAsset(relMaterialDir);
         // copy textures
         foreach(var texture in textures)
         {
-            var absSprite = Path.Combine(absSpriteDir, Path.GetFileName(texture));
+            var filename = Path.GetFileName(texture);
+            var absSprite = Path.Combine(absSpriteDir, filename);
             var relSprite = ToRelativePath(absSprite);
             File.Copy(texture, absSprite);
             AssetDatabase.ImportAsset(relSprite);
+            // create material
+            Material newMat = new Material(Shader.Find("Standard"));
+            newMat.SetTexture("_MainTex", (Texture)AssetDatabase.LoadAssetAtPath(relSprite, typeof(Texture)));
+            var relMaterial = Path.Combine(relMaterialDir, $"mat_{Path.GetFileNameWithoutExtension(texture)}.mat");
+            Debug.Log(relMaterial);
+            AssetDatabase.CreateAsset(newMat, relMaterial);
         }
+        AssetDatabase.Refresh();
 	}
 
 	private static (string, string, int) GenUniqueDirectory(string name) {
