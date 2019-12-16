@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.IO;
+using System.Linq;
 
 public class uniPlanetEditor : EditorWindow {
 	private string blocksJson = "blocks.json";
@@ -76,13 +77,16 @@ public class uniPlanetEditor : EditorWindow {
 		AssetDatabase.ImportAsset(relPrefabDir);
 
 		// copy textures
-		foreach (var textureData in texturesData.textures) {
+        for(int i=0; i<texturesData.textures.Length; i++) {
+            var textureData = texturesData.textures[i];
 			CreatePlanes(absSpriteDir, relMaterialDir, relPrefabDir, texturesDir, textureData);
+            EditorUtility.DisplayProgressBar("Copy Textures...", $"{i}/{texturesData.textures.Length}", (float)i / (float)texturesData.textures.Length);
 		}
-
+        EditorUtility.ClearProgressBar();
+        // create prefab
 		var sideDict = new Dictionary<string, GameObject>();
-
-		foreach (var blockData in blocksData.blocks) {
+        for(int i=0; i<blocksData.blocks.Length; i++) {
+            var blockData = blocksData.blocks[i];
 			sideDict.Clear();
 			//var block = new GameObject();
 			var textureData = FindTextureFromReference(texturesData, blockData.texture);
@@ -164,14 +168,17 @@ public class uniPlanetEditor : EditorWindow {
 			} catch (System.ArgumentException) {
 				Debug.LogError(prefabFile);
 			}
-		}
 
-		AssetDatabase.Refresh();
+            EditorUtility.DisplayProgressBar("Create Prefabs...", $"{i}/{blocksData.blocks.Length}", (float)i / (float)blocksData.blocks.Length);
+        }
+        EditorUtility.ClearProgressBar();
+
+        AssetDatabase.Refresh();
 	}
 
 	private void GenerateWorld() {
         var worldData = (uniPlanet.World)JsonUtility.FromJson(File.ReadAllText(worldJson), typeof(uniPlanet.World));
-        var absOutputDir = Path.Combine(Application.dataPath, "planetData");
+        var absOutputDir = GetLatestDirectory("planetData");
         if(!Directory.Exists(absOutputDir))
         {
             Debug.LogError($"{absOutputDir} is missing.");
@@ -195,7 +202,7 @@ public class uniPlanetEditor : EditorWindow {
             blockObj.transform.position = new Vector3(cell.x * 5, cell.y * 5, cell.z * 5);
         }
         EditorUtility.ClearProgressBar();
-        PrefabUtility.SaveAsPrefabAssetAndConnect(worldObj, Path.Combine(relPrefabDir, "world.prefab"), InteractionMode.AutomatedAction);
+        //PrefabUtility.SaveAsPrefabAssetAndConnect(worldObj, Path.Combine(relPrefabDir, "world.prefab"), InteractionMode.AutomatedAction);
     }
 
 	private static uniPlanet.Texture FindTextureFromReference(uniPlanet.Textures textures, string reference) {
@@ -281,6 +288,21 @@ public class uniPlanetEditor : EditorWindow {
 
 		return (uniData, count);
 	}
+
+    private static string GetLatestDirectory(string name)
+    {
+        var app = Application.dataPath;
+        var uniData = Path.Combine(app, $"{name}");
+        var count = 1;
+
+        while (Directory.Exists(uniData))
+        {
+            uniData = Path.Combine(app, $"{name}{count}");
+            count++;
+        }
+
+        return Path.Combine(app, $"{name}{count-1}");
+    }
 
 	private static string ToRelativePath(string absPath) {
 		var sub = absPath.Substring(Application.dataPath.Length);
