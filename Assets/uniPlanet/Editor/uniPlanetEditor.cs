@@ -57,7 +57,12 @@ public class uniPlanetEditor : EditorWindow {
 
 	private void GeneratePrefab() {
 		var blocksData = (uniPlanet.Blocks)JsonUtility.FromJson(File.ReadAllText(blocksJson), typeof(uniPlanet.Blocks));
-		var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(texturesJson), typeof(uniPlanet.Textures));
+        var blocksDict = new Dictionary<string, uniPlanet.Block>();
+        foreach (var bd in blocksData.blocks)
+        {
+            blocksDict[bd.reference] = bd;
+        }
+        var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(texturesJson), typeof(uniPlanet.Textures));
 		var texturesDir = Path.Combine(Path.GetDirectoryName(texturesJson), texturesData.baseDirectory);
 		// create sprite directory
 		(string absOutputDir, string relOutputDir, int _) = GenUniqueDirectory("planetData");
@@ -176,9 +181,23 @@ public class uniPlanetEditor : EditorWindow {
         AssetDatabase.Refresh();
 	}
 
-	private void GenerateWorld() {
+	private void GenerateWorld()
+    {
+        var blocksData = (uniPlanet.Blocks)JsonUtility.FromJson(File.ReadAllText(blocksJson), typeof(uniPlanet.Blocks));
+        var blocksDict = new Dictionary<string, uniPlanet.Block>();
+        foreach(var bd in blocksData.blocks) {
+            blocksDict[bd.reference] = bd;
+        }
+
+        var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(texturesJson), typeof(uniPlanet.Textures));
+        var texturesDict = new Dictionary<string, uniPlanet.Texture>();
+        foreach(var td in texturesData.textures)
+        {
+            texturesDict[td.reference] = td;
+        }
+   
         var worldData = (uniPlanet.World)JsonUtility.FromJson(File.ReadAllText(worldJson), typeof(uniPlanet.World));
-        var absOutputDir = GetLatestDirectory("planetData");
+        (string absOutputDir, int count) = GetLatestDirectory("planetData");
         if(!Directory.Exists(absOutputDir))
         {
             Debug.LogError($"{absOutputDir} is missing.");
@@ -186,23 +205,119 @@ public class uniPlanetEditor : EditorWindow {
         }
         var absPrefabDir = Path.Combine(absOutputDir, "prefab");
         var relPrefabDir = ToRelativePath(absPrefabDir);
-        var worldObj = new GameObject($"world");
-        for (int i= 0; i < worldData.cell.Length; i++)
+        var worldObj = new GameObject($"world{count}");
+        var map = TableToMap(worldData);
+        var mapSize = worldData.worldSize.x * worldData.worldSize.y * worldData.worldSize.z;
+        for(int x=0; x<worldData.worldSize.x; x++)
         {
-            EditorUtility.DisplayProgressBar("Generating World...", $"{i}/{worldData.cell.Length}", (float)i / (float)worldData.cell.Length);
-            var cell = worldData.cell[i];
-            var blockPath = Path.Combine(relPrefabDir, $"block_{cell.block}.prefab");
-            var blockPref = AssetDatabase.LoadAssetAtPath(blockPath, typeof(GameObject)) as GameObject;
-            UnityEngine.Assertions.Assert.IsTrue(blockPref != null, blockPath);
-            if (blockPref == null) {
-                break;
+            for (int y = 0; y < worldData.worldSize.y; y++)
+            {
+                for (int z = 0; z < worldData.worldSize.z; z++)
+                {
+                    int index = x + y + z;
+                    //EditorUtility.DisplayProgressBar("Generating World...", $"{index}/{mapSize}", (float)index / (float)mapSize);
+                    var key = map[x, y, z];
+                    if(key == null)
+                    {
+                        continue;
+                    }
+                    var blockData = blocksDict[key];
+                    var textureData = texturesDict[blockData.texture];
+                    var mappingRule = textureData.mappingRule;
+                    var visibleXP = x + 1 < worldData.worldSize.x;
+                    var visibleXN = x - 1 >= 0;
+                    var visibleYP = y + 1 < worldData.worldSize.y;
+                    var visibleYN = y - 1 >= 0;
+                    var visibleZP = z + 1 < worldData.worldSize.z;
+                    var visibleZN = z - 1 >= 0;
+                    var blockXP = visibleXP ? map[x + 1, y, z] : null;
+                    var blockXN = visibleXN ? map[x - 1, y, z] : null;
+                    var blockYP = visibleYP ? map[x, y + 1, z] : null;
+                    var blockYN = visibleYN ? map[x, y - 1, z] : null;
+                    var blockZP = visibleZP ? map[x, y, z + 1] : null;
+                    var blockZN = visibleZN ? map[x, y, z - 1] : null;
+                    var basePos = new Vector3(x * 5, y * 5, z * 5);
+                    // x+, x-
+                    if(blockXP == null) {
+                        var right = string.IsNullOrEmpty(mappingRule.right) ? mappingRule.all : mappingRule.right;
+                        var path = Path.Combine(relPrefabDir, $"pref_{map[x,y,z]}{right}.prefab");
+                        var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
+                        UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
+                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
+                        instance.transform.position = basePos + (Vector3.right * 5);
+                    }
+                    if (blockXN == null)
+                    {
+                        var left = string.IsNullOrEmpty(mappingRule.left) ? mappingRule.all : mappingRule.left;
+                        var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{left}.prefab");
+                        var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
+                        UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
+                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
+                        instance.transform.position = basePos + (Vector3.left * 5);
+                    }
+                    // y+, y-
+                    if (blockYP == null)
+                    {
+                        var top = string.IsNullOrEmpty(mappingRule.top) ? mappingRule.all : mappingRule.top;
+                        var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{top}.prefab");
+                        var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
+                        UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
+                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
+                        instance.transform.position = basePos + (Vector3.up * 5);
+                    }
+                    if (blockYN == null)
+                    {
+                        var bottom = string.IsNullOrEmpty(mappingRule.bottom) ? mappingRule.all : mappingRule.bottom;
+                        var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{bottom}.prefab");
+                        var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
+                        UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
+                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
+                        instance.transform.position = basePos + (Vector3.down * 5);
+                    }
+                    // z+, z-
+                    if (blockZP == null)
+                    {
+                        var front = string.IsNullOrEmpty(mappingRule.front) ? mappingRule.all : mappingRule.front;
+                        var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{front}.prefab");
+                        var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
+                        UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
+                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
+                        instance.transform.position = basePos + (Vector3.forward * 5);
+                    }
+                    if (blockZN == null)
+                    {
+                        var back = string.IsNullOrEmpty(mappingRule.back) ? mappingRule.all : mappingRule.back;
+                        var path = Path.Combine(relPrefabDir, $"pref_{map[x, y, z]}{back}.prefab");
+                        var prefab = AssetDatabase.LoadAssetAtPath(path, typeof(GameObject));
+                        UnityEngine.Assertions.Assert.IsTrue(prefab != null, path);
+                        var instance = GameObject.Instantiate(prefab, worldObj.transform) as GameObject;
+                        instance.transform.position = basePos + (Vector3.back * 5);
+                    }
+                }
             }
-            var blockObj = GameObject.Instantiate(blockPref, worldObj.transform);
-            blockObj.name = cell.block;
-            blockObj.transform.position = new Vector3(cell.x * 5, cell.y * 5, cell.z * 5);
         }
-        EditorUtility.ClearProgressBar();
+        //EditorUtility.ClearProgressBar();
         //PrefabUtility.SaveAsPrefabAssetAndConnect(worldObj, Path.Combine(relPrefabDir, "world.prefab"), InteractionMode.AutomatedAction);
+    }
+
+    private static string[,,] TableToMap(uniPlanet.World worldData)
+    {
+        var map = new string[worldData.worldSize.x, worldData.worldSize.y, worldData.worldSize.z];
+        for(int i=0; i<worldData.worldSize.x; i++)
+        {
+            for(int j=0; j<worldData.worldSize.y; j++)
+            {
+                for(int k=0; k<worldData.worldSize.z; k++)
+                {
+                    map[i, j, k] = null;
+                }
+            }
+        }
+        foreach (var cell in worldData.cell)
+        {
+            map[cell.x, cell.y, cell.z] = cell.block;
+        }
+        return map;
     }
 
 	private static uniPlanet.Texture FindTextureFromReference(uniPlanet.Textures textures, string reference) {
@@ -289,19 +404,23 @@ public class uniPlanetEditor : EditorWindow {
 		return (uniData, count);
 	}
 
-    private static string GetLatestDirectory(string name)
+    private static (string,int) GetLatestDirectory(string name)
     {
         var app = Application.dataPath;
         var uniData = Path.Combine(app, $"{name}");
-        var count = 1;
+        var count = 0;
 
         while (Directory.Exists(uniData))
         {
             uniData = Path.Combine(app, $"{name}{count}");
             count++;
         }
-
-        return Path.Combine(app, $"{name}{count-1}");
+        count--;
+        if(count == 0)
+        {
+            return (Path.Combine(app, $"{name}"), count);
+        }
+        return (Path.Combine(app, $"{name}{count}"), count);
     }
 
 	private static string ToRelativePath(string absPath) {
