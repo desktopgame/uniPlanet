@@ -23,7 +23,6 @@ public class uniPlanetEditor : EditorWindow {
 		window.Show();
 	}
 
-
 	private void Init() {
 		this.blocksJson = PlayerPrefs.GetString(KEY_BLOCKSJSON);
 		this.texturesJson = PlayerPrefs.GetString(KEY_TEXTURESJSON);
@@ -37,7 +36,6 @@ public class uniPlanetEditor : EditorWindow {
 		}
 
 		this.log = "";
-
 		EditorGUILayout.BeginVertical();
 		ChooseFolder("Block", KEY_BLOCKSJSON, ref this.blocksJson);
 		ChooseFolder("Texture", KEY_TEXTURESJSON, ref this.texturesJson);
@@ -56,37 +54,15 @@ public class uniPlanetEditor : EditorWindow {
 	}
 
 	private void GeneratePrefab() {
-		var blocksData = (uniPlanet.Blocks)JsonUtility.FromJson(File.ReadAllText(blocksJson), typeof(uniPlanet.Blocks));
-		var blocksDict = new Dictionary<string, uniPlanet.Block>();
-
-		foreach (var bd in blocksData.blocks) {
-			blocksDict[bd.reference] = bd;
-		}
-
-		var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(texturesJson), typeof(uniPlanet.Textures));
-		var texturesDict = new Dictionary<string, uniPlanet.Texture>();
-
-		foreach (var td in texturesData.textures) {
-			texturesDict[td.reference] = td;
-		}
-
-		var texturesDir = Path.Combine(Path.GetDirectoryName(texturesJson), texturesData.baseDirectory);
-		// create sprite directory
+		// parse data
+		(uniPlanet.Blocks blocksData, Dictionary<string, uniPlanet.Block> blocksDict) = ParseBlocksJson(this.blocksJson);
+		(uniPlanet.Textures texturesData, Dictionary<string, uniPlanet.Texture> texturesDict) = ParseTexturesJson(this.texturesJson);
+		// create directories
 		(string absOutputDir, string relOutputDir, int _) = GenUniqueDirectory("planetData");
-		var absSpriteDir = Path.Combine(absOutputDir, "sprite");
-		var relSpriteDir = ToRelativePath(absSpriteDir);
-		Directory.CreateDirectory(absSpriteDir);
-		AssetDatabase.ImportAsset(relSpriteDir);
-		// create material directory
-		var absMaterialDir = Path.Combine(absOutputDir, "material");
-		var relMaterialDir = ToRelativePath(absMaterialDir);
-		Directory.CreateDirectory(absMaterialDir);
-		AssetDatabase.ImportAsset(relMaterialDir);
-		// create prefab directory
-		var absPrefabDir = Path.Combine(absOutputDir, "prefab");
-		var relPrefabDir = ToRelativePath(absPrefabDir);
-		Directory.CreateDirectory(absPrefabDir);
-		AssetDatabase.ImportAsset(relPrefabDir);
+		(string absSpriteDir, string relSpriteDir) = CreateDirectory(absOutputDir, "sprite");
+		(string absMaterialDir, string relMaterialDir) = CreateDirectory(absOutputDir, "material");
+		(string absPrefabDir, string relPrefabDir) = CreateDirectory(absOutputDir, "prefab");
+		var texturesDir = Path.Combine(Path.GetDirectoryName(texturesJson), texturesData.baseDirectory);
 
 		// copy textures
 		for (int i = 0; i < blocksData.blocks.Length; i++) {
@@ -103,7 +79,6 @@ public class uniPlanetEditor : EditorWindow {
 		for (int i = 0; i < blocksData.blocks.Length; i++) {
 			var blockData = blocksData.blocks[i];
 			sideDict.Clear();
-			//var block = new GameObject();
 			var textureData = FindTextureFromReference(texturesData, blockData.texture);
 			var mappingRule = textureData.mappingRule;
 			var baseName = blockData.reference;
@@ -188,27 +163,15 @@ public class uniPlanetEditor : EditorWindow {
 		}
 
 		EditorUtility.ClearProgressBar();
-
 		AssetDatabase.Refresh();
 	}
 
 	private void GenerateWorld() {
-		var blocksData = (uniPlanet.Blocks)JsonUtility.FromJson(File.ReadAllText(blocksJson), typeof(uniPlanet.Blocks));
-		var blocksDict = new Dictionary<string, uniPlanet.Block>();
-
-		foreach (var bd in blocksData.blocks) {
-			blocksDict[bd.reference] = bd;
-		}
-
-		var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(texturesJson), typeof(uniPlanet.Textures));
-		var texturesDict = new Dictionary<string, uniPlanet.Texture>();
-
-		foreach (var td in texturesData.textures) {
-			texturesDict[td.reference] = td;
-		}
-
-		var worldData = (uniPlanet.World)JsonUtility.FromJson(File.ReadAllText(worldJson), typeof(uniPlanet.World));
+		// parse data
+		(uniPlanet.Blocks blocksData, Dictionary<string, uniPlanet.Block> blocksDict) = ParseBlocksJson(this.blocksJson);
+		(uniPlanet.Textures texturesData, Dictionary<string, uniPlanet.Texture> texturesDict) = ParseTexturesJson(this.texturesJson);
 		(string absOutputDir, int count) = GetLatestDirectory("planetData");
+		var worldData = (uniPlanet.World)JsonUtility.FromJson(File.ReadAllText(worldJson), typeof(uniPlanet.World));
 
 		if (!Directory.Exists(absOutputDir)) {
 			Debug.LogError($"{absOutputDir} is missing.");
@@ -302,12 +265,37 @@ public class uniPlanetEditor : EditorWindow {
 					}
 				}
 			}
-        }
-        worldObj.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+		}
 
-        //EditorUtility.ClearProgressBar();
-        //PrefabUtility.SaveAsPrefabAssetAndConnect(worldObj, Path.Combine(relPrefabDir, "world.prefab"), InteractionMode.AutomatedAction);
-    }
+		worldObj.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+
+		//EditorUtility.ClearProgressBar();
+		//PrefabUtility.SaveAsPrefabAssetAndConnect(worldObj, Path.Combine(relPrefabDir, "world.prefab"), InteractionMode.AutomatedAction);
+	}
+
+	private static (uniPlanet.Blocks, Dictionary<string, uniPlanet.Block>) ParseBlocksJson(string json) {
+
+		var blocksData = (uniPlanet.Blocks)JsonUtility.FromJson(File.ReadAllText(json), typeof(uniPlanet.Blocks));
+		var blocksDict = new Dictionary<string, uniPlanet.Block>();
+
+		foreach (var bd in blocksData.blocks) {
+			blocksDict[bd.reference] = bd;
+		}
+
+		return (blocksData, blocksDict);
+	}
+
+	private static (uniPlanet.Textures, Dictionary<string, uniPlanet.Texture>) ParseTexturesJson(string json) {
+
+		var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(json), typeof(uniPlanet.Textures));
+		var texturesDict = new Dictionary<string, uniPlanet.Texture>();
+
+		foreach (var td in texturesData.textures) {
+			texturesDict[td.reference] = td;
+		}
+
+		return (texturesData, texturesDict);
+	}
 
 	private static string[,,] TableToMap(uniPlanet.World worldData) {
 		var map = new string[worldData.worldSize.x, worldData.worldSize.y, worldData.worldSize.z];
@@ -321,7 +309,7 @@ public class uniPlanetEditor : EditorWindow {
 		}
 
 		foreach (var cell in worldData.cell) {
-            map[cell.x, cell.y, cell.z] = cell.block;
+			map[cell.x, cell.y, cell.z] = cell.block;
 		}
 
 		return map;
@@ -389,6 +377,18 @@ public class uniPlanetEditor : EditorWindow {
 		GameObject.DestroyImmediate(plane);
 	}
 
+	//
+	// File Utility
+	//
+
+	private static (string, string) CreateDirectory(string parent, string name) {
+		var abs = Path.Combine(parent, name);
+		var rel = ToRelativePath(parent);
+		Directory.CreateDirectory(parent);
+		AssetDatabase.ImportAsset(rel);
+		return (abs, rel);
+	}
+
 	private static (string, string, int) GenUniqueDirectory(string name) {
 		(string absOutputDir, int count) = GetUniqueDirectory(name);
 		var relOutputDir = ToRelativePath(absOutputDir);
@@ -440,6 +440,10 @@ public class uniPlanetEditor : EditorWindow {
 
 		return "Assets/" + sub;
 	}
+
+	//
+	// GUI Utility
+	//
 
 	private void ChooseFolder(string label, string key, ref string dir) {
 		EditorGUILayout.BeginHorizontal();
