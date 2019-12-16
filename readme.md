@@ -6,7 +6,7 @@ blocks.json textures.json と、エクスポートによって得られたjson�
 ![入力画面](./images/uniPlanetEditor2.png)
 
 `Generate Prefab`ボタンを押す。  
-すると `Assets/uniPlanet`フォルダ が生成される。
+すると `Assets/uniPlanetData`フォルダ が生成される。
 この中にはテクスチャの一覧とプレーン/ブロック化されたプレハブが含まれます。
 ![Generate Prefab](./images/uniPlanetEditor3.png)
 
