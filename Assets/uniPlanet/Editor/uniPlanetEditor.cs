@@ -57,16 +57,22 @@ public class uniPlanetEditor : EditorWindow {
 
 		var texturesDir = Path.Combine(Path.GetDirectoryName(texturesJson), texturesData.baseDirectory);
 		var textures = Directory.GetFiles(texturesDir);
-        // create directory for assets
+        // create sprite directory
 		(string absOutputDir, string relOutputDir, int _) = GenUniqueDirectory("planetData");
 		var absSpriteDir = Path.Combine(absOutputDir, "sprite");
         var relSpriteDir = ToRelativePath(absSpriteDir);
 		Directory.CreateDirectory(absSpriteDir);
         AssetDatabase.ImportAsset(relSpriteDir);
+        // create material directory
         var absMaterialDir = Path.Combine(absOutputDir, "material");
         var relMaterialDir = ToRelativePath(absMaterialDir);
         Directory.CreateDirectory(absMaterialDir);
         AssetDatabase.ImportAsset(relMaterialDir);
+        // create prefab directory
+        var absPrefabDir = Path.Combine(absOutputDir, "prefab");
+        var relPrefabDir = ToRelativePath(absPrefabDir);
+        Directory.CreateDirectory(absPrefabDir);
+        AssetDatabase.ImportAsset(relPrefabDir);
         // copy textures
         foreach(var texture in textures)
         {
@@ -76,11 +82,16 @@ public class uniPlanetEditor : EditorWindow {
             File.Copy(texture, absSprite);
             AssetDatabase.ImportAsset(relSprite);
             // create material
-            Material newMat = new Material(Shader.Find("Standard"));
+            var newMat = new Material(Shader.Find("Standard"));
             newMat.SetTexture("_MainTex", (Texture)AssetDatabase.LoadAssetAtPath(relSprite, typeof(Texture)));
             var relMaterial = Path.Combine(relMaterialDir, $"mat_{Path.GetFileNameWithoutExtension(texture)}.mat");
-            Debug.Log(relMaterial);
             AssetDatabase.CreateAsset(newMat, relMaterial);
+            // create prefab
+            var plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            plane.GetComponent<MeshRenderer>().material = newMat;
+            var relPrefab = Path.Combine(relPrefabDir, $"pref_{Path.GetFileNameWithoutExtension(texture)}.prefab");
+            PrefabUtility.SaveAsPrefabAssetAndConnect(plane, relPrefab, InteractionMode.AutomatedAction);
+            GameObject.DestroyImmediate(plane);
         }
         AssetDatabase.Refresh();
 	}
