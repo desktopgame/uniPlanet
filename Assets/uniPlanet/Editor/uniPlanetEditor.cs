@@ -54,85 +54,178 @@ public class uniPlanetEditor : EditorWindow {
 		var blocksData = (uniPlanet.Blocks)JsonUtility.FromJson(File.ReadAllText(blocksJson), typeof(uniPlanet.Blocks));
 		var texturesData = (uniPlanet.Textures)JsonUtility.FromJson(File.ReadAllText(texturesJson), typeof(uniPlanet.Textures));
 		var worldData = (uniPlanet.World)JsonUtility.FromJson(File.ReadAllText(worldJson), typeof(uniPlanet.World));
-
 		var texturesDir = Path.Combine(Path.GetDirectoryName(texturesJson), texturesData.baseDirectory);
-		var textures = Directory.GetFiles(texturesDir);
-        // create sprite directory
+		// create sprite directory
 		(string absOutputDir, string relOutputDir, int _) = GenUniqueDirectory("planetData");
 		var absSpriteDir = Path.Combine(absOutputDir, "sprite");
-        var relSpriteDir = ToRelativePath(absSpriteDir);
+		var relSpriteDir = ToRelativePath(absSpriteDir);
 		Directory.CreateDirectory(absSpriteDir);
-        AssetDatabase.ImportAsset(relSpriteDir);
-        // create material directory
-        var absMaterialDir = Path.Combine(absOutputDir, "material");
-        var relMaterialDir = ToRelativePath(absMaterialDir);
-        Directory.CreateDirectory(absMaterialDir);
-        AssetDatabase.ImportAsset(relMaterialDir);
-        // create prefab directory
-        var absPrefabDir = Path.Combine(absOutputDir, "prefab");
-        var relPrefabDir = ToRelativePath(absPrefabDir);
-        Directory.CreateDirectory(absPrefabDir);
-        AssetDatabase.ImportAsset(relPrefabDir);
-        // copy textures
-        foreach(var textureData in texturesData.textures)
-        {
-            CreatePlanes(absSpriteDir, relMaterialDir, relPrefabDir, texturesDir, textureData);
-        }
-        AssetDatabase.Refresh();
+		AssetDatabase.ImportAsset(relSpriteDir);
+		// create material directory
+		var absMaterialDir = Path.Combine(absOutputDir, "material");
+		var relMaterialDir = ToRelativePath(absMaterialDir);
+		Directory.CreateDirectory(absMaterialDir);
+		AssetDatabase.ImportAsset(relMaterialDir);
+		// create prefab directory
+		var absPrefabDir = Path.Combine(absOutputDir, "prefab");
+		var relPrefabDir = ToRelativePath(absPrefabDir);
+		Directory.CreateDirectory(absPrefabDir);
+		AssetDatabase.ImportAsset(relPrefabDir);
+
+		// copy textures
+		foreach (var textureData in texturesData.textures) {
+			CreatePlanes(absSpriteDir, relMaterialDir, relPrefabDir, texturesDir, textureData);
+		}
+
+		var sideDict = new Dictionary<string, GameObject>();
+
+		foreach (var blockData in blocksData.blocks) {
+			sideDict.Clear();
+			//var block = new GameObject();
+			var textureData = FindTextureFromReference(texturesData, blockData.texture);
+			var mappingRule = textureData.mappingRule;
+			var baseName = textureData.baseFileName;
+
+			if (!string.IsNullOrEmpty(mappingRule.all)) {
+				var name = Path.Combine(relPrefabDir, $"pref_{baseName}{mappingRule.all}") + ".prefab";
+				var pref = AssetDatabase.LoadAssetAtPath(name, typeof(GameObject)) as GameObject;
+                UnityEngine.Assertions.Assert.IsTrue(pref != null, name);
+                sideDict["top"] = pref;
+				sideDict["bottom"] = pref;
+				sideDict["left"] = pref;
+				sideDict["right"] = pref;
+				sideDict["front"] = pref;
+				sideDict["back"] = pref;
+			}
+
+			if (!string.IsNullOrEmpty(mappingRule.top)) {
+				var name = Path.Combine(relPrefabDir, $"pref_{baseName}{mappingRule.top}") + ".prefab";
+				var pref = AssetDatabase.LoadAssetAtPath(name, typeof(GameObject)) as GameObject;
+                UnityEngine.Assertions.Assert.IsTrue(pref != null, name);
+                sideDict["top"] = pref;
+			}
+
+			if (!string.IsNullOrEmpty(mappingRule.bottom)) {
+				var name = Path.Combine(relPrefabDir, $"pref_{baseName}{mappingRule.bottom}") + ".prefab";
+				var pref = AssetDatabase.LoadAssetAtPath(name, typeof(GameObject)) as GameObject;
+                UnityEngine.Assertions.Assert.IsTrue(pref != null, name);
+                sideDict["bottom"] = pref;
+			}
+
+			if (!string.IsNullOrEmpty(mappingRule.left)) {
+				var name = Path.Combine(relPrefabDir, $"pref_{baseName}{mappingRule.left}") + ".prefab";
+				var pref = AssetDatabase.LoadAssetAtPath(name, typeof(GameObject)) as GameObject;
+                UnityEngine.Assertions.Assert.IsTrue(pref != null, name);
+                sideDict["left"] = pref;
+			}
+
+			if (!string.IsNullOrEmpty(mappingRule.right)) {
+				var name = Path.Combine(relPrefabDir, $"pref_{baseName}{mappingRule.right}") + ".prefab";
+				var pref = AssetDatabase.LoadAssetAtPath(name, typeof(GameObject)) as GameObject;
+                UnityEngine.Assertions.Assert.IsTrue(pref != null, name);
+                sideDict["right"] = pref;
+			}
+
+			if (!string.IsNullOrEmpty(mappingRule.front)) {
+				var name = Path.Combine(relPrefabDir, $"pref_{baseName}{mappingRule.front}") + ".prefab";
+				var pref = AssetDatabase.LoadAssetAtPath(name, typeof(GameObject)) as GameObject;
+                UnityEngine.Assertions.Assert.IsTrue(pref != null, name);
+                sideDict["front"] = pref;
+			}
+
+			if (!string.IsNullOrEmpty(mappingRule.back)) {
+				var name = Path.Combine(relPrefabDir, $"pref_{baseName}{mappingRule.back}") + ".prefab";
+				var pref = AssetDatabase.LoadAssetAtPath(name, typeof(GameObject)) as GameObject;
+                UnityEngine.Assertions.Assert.IsTrue(pref != null, name);
+				sideDict["back"] = pref;
+			}
+
+			var block = new GameObject();
+            var prefabFile = Path.Combine(relPrefabDir, $"block_{blockData.reference}.prefab");
+
+            try {
+				var top = GameObject.Instantiate(sideDict["top"], Vector3.up * 5, Quaternion.Euler(0, 0, 0), block.transform);
+                top.name = "top";
+				var bottom = GameObject.Instantiate(sideDict["bottom"], Vector3.down * 5, Quaternion.Euler(0, 0, 180), block.transform);
+                bottom.name = "bottom";
+				var left = GameObject.Instantiate(sideDict["left"], Vector3.left * 5, Quaternion.Euler(90, 0, 90), block.transform);
+                left.name = "left";
+				var right = GameObject.Instantiate(sideDict["right"], Vector3.right * 5, Quaternion.Euler(90, 90, 0), block.transform);
+                right.name = "right";
+				var front = GameObject.Instantiate(sideDict["front"], Vector3.forward * 5, Quaternion.Euler(90, 0, 0), block.transform);
+                front.name = "front";
+				var back = GameObject.Instantiate(sideDict["back"], Vector3.back * 5, Quaternion.Euler(90, 180, 0), block.transform);
+                back.name = "back";
+				PrefabUtility.SaveAsPrefabAssetAndConnect(block, prefabFile, InteractionMode.AutomatedAction);
+				GameObject.DestroyImmediate(block);
+			} catch (System.ArgumentException) {
+				Debug.LogError(prefabFile);
+			}
+		}
+
+		AssetDatabase.Refresh();
 	}
 
-    private static void CreatePlanes(string absSpriteDir, string relMaterialDir, string relPrefabDir, string texturesDir, uniPlanet.Texture textureData)
-    {
-        var mappingRule = textureData.mappingRule;
-        if (!string.IsNullOrEmpty(mappingRule.all))
-        {
-            CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.all + ".png"));
-        }
-        if (!string.IsNullOrEmpty(mappingRule.top))
-        {
-            CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.top + ".png"));
-        }
-        if (!string.IsNullOrEmpty(mappingRule.bottom))
-        {
-            CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.bottom + ".png"));
-        }
-        if (!string.IsNullOrEmpty(mappingRule.left))
-        {
-            CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.left + ".png"));
-        }
-        if (!string.IsNullOrEmpty(mappingRule.right))
-        {
-            CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.right + ".png"));
-        }
-        if (!string.IsNullOrEmpty(mappingRule.front))
-        {
-            CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.front + ".png"));
-        }
-        if (!string.IsNullOrEmpty(mappingRule.back))
-        {
-            CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.back + ".png"));
-        }
-    }
+	private static uniPlanet.Texture FindTextureFromReference(uniPlanet.Textures textures, string reference) {
+		foreach (var texture in textures.textures) {
+			if (texture.reference == reference) {
+				return texture;
+			}
+		}
 
-    private static void CreatePlane(string absSpriteDir, string relMaterialDir, string relPrefabDir, string absTextuePath)
-    {
-        var filename = Path.GetFileName(absTextuePath);
-        var absSprite = Path.Combine(absSpriteDir, filename);
-        var relSprite = ToRelativePath(absSprite);
-        File.Copy(absTextuePath, absSprite);
-        AssetDatabase.ImportAsset(relSprite);
-        // create material
-        var newMat = new Material(Shader.Find("Standard"));
-        newMat.SetTexture("_MainTex", (Texture)AssetDatabase.LoadAssetAtPath(relSprite, typeof(Texture)));
-        var relMaterial = Path.Combine(relMaterialDir, $"mat_{Path.GetFileNameWithoutExtension(absTextuePath)}.mat");
-        AssetDatabase.CreateAsset(newMat, relMaterial);
-        // create prefab
-        var plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        plane.GetComponent<MeshRenderer>().material = newMat;
-        var relPrefab = Path.Combine(relPrefabDir, $"pref_{Path.GetFileNameWithoutExtension(absTextuePath)}.prefab");
-        PrefabUtility.SaveAsPrefabAssetAndConnect(plane, relPrefab, InteractionMode.AutomatedAction);
-        GameObject.DestroyImmediate(plane);
-    }
+		return null;
+	}
+
+	private static void CreatePlanes(string absSpriteDir, string relMaterialDir, string relPrefabDir, string texturesDir, uniPlanet.Texture textureData) {
+		var mappingRule = textureData.mappingRule;
+
+		if (!string.IsNullOrEmpty(mappingRule.all)) {
+			CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.all + ".png"));
+		}
+
+		if (!string.IsNullOrEmpty(mappingRule.top)) {
+			CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.top + ".png"));
+		}
+
+		if (!string.IsNullOrEmpty(mappingRule.bottom)) {
+			CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.bottom + ".png"));
+		}
+
+		if (!string.IsNullOrEmpty(mappingRule.left)) {
+			CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.left + ".png"));
+		}
+
+		if (!string.IsNullOrEmpty(mappingRule.right)) {
+			CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.right + ".png"));
+		}
+
+		if (!string.IsNullOrEmpty(mappingRule.front)) {
+			CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.front + ".png"));
+		}
+
+		if (!string.IsNullOrEmpty(mappingRule.back)) {
+			CreatePlane(absSpriteDir, relMaterialDir, relPrefabDir, Path.Combine(texturesDir, textureData.baseFileName + mappingRule.back + ".png"));
+		}
+	}
+
+	private static void CreatePlane(string absSpriteDir, string relMaterialDir, string relPrefabDir, string absTextuePath) {
+		var filename = Path.GetFileName(absTextuePath);
+		var absSprite = Path.Combine(absSpriteDir, filename);
+		var relSprite = ToRelativePath(absSprite);
+		File.Copy(absTextuePath, absSprite);
+		AssetDatabase.ImportAsset(relSprite);
+		// create material
+		var newMat = new Material(Shader.Find("Standard"));
+		newMat.SetTexture("_MainTex", (Texture)AssetDatabase.LoadAssetAtPath(relSprite, typeof(Texture)));
+		var relMaterial = Path.Combine(relMaterialDir, $"mat_{Path.GetFileNameWithoutExtension(absTextuePath)}.mat");
+		AssetDatabase.CreateAsset(newMat, relMaterial);
+		// create prefab
+		var plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+		plane.GetComponent<MeshRenderer>().material = newMat;
+		var relPrefab = Path.Combine(relPrefabDir, $"pref_{Path.GetFileNameWithoutExtension(absTextuePath)}.prefab");
+		PrefabUtility.SaveAsPrefabAssetAndConnect(plane, relPrefab, InteractionMode.AutomatedAction);
+		GameObject.DestroyImmediate(plane);
+	}
 
 	private static (string, string, int) GenUniqueDirectory(string name) {
 		(string absOutputDir, int count) = GetUniqueDirectory(name);
@@ -158,7 +251,12 @@ public class uniPlanetEditor : EditorWindow {
 	}
 
 	private static string ToRelativePath(string absPath) {
-		return "Assets/" + absPath.Substring(Application.dataPath.Length);
+        var sub = absPath.Substring(Application.dataPath.Length);
+        if (sub.StartsWith("/") || sub.StartsWith("\\"))
+        {
+            return "Assets" + sub;
+        }
+		return "Assets/" + sub;
 	}
 
 	private void ChooseFolder(string label, string key, ref string dir) {
